@@ -16,10 +16,8 @@ from flask_pymongo import PyMongo
 from pymongo.errors import ConfigurationError, PyMongoError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-load_dotenv()
-
-app = Flask(__name__, template_folder="Templates", static_folder="Static")
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "campuscoin_tracker_2026")
+app = Flask(__name__, template_folder="Templates", static_folder="Static", static_url_path="/static")
+app.secret_key = "campuscoin_tracker_2026"
 
 # --- CONFIGURATION ---
 

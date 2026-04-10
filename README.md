@@ -1,120 +1,60 @@
-# YourTreasurer
 
-````markdown
-# YourTreasurer 🏛️  
-**Digital CFO for Students | CommitVerse 2026 Submission**
+YourTreasurer 🏛️
+Digital CFO for Students | CommitVerse 2026 Submission
 
-YourTreasurer is a premium personal finance tool designed to act as a **financial bodyguard** for students. It manages monthly allowances, tracks social liabilities (loans), and ensures **audit-ready compliance** for campus life.
+YourTreasurer is a high-impact personal finance tool designed to act as a "financial bodyguard" for students. Beyond simple tracking, it manages monthly allowances, handles social liabilities (peer-to-peer loans), and ensures audit-ready compliance for campus life through automated logic and cloud integration.
 
----
+✨ Key Features
+Guardian Mail Logic: Automated Flask-Mail alerts triggered at 10%, 5%, and 0% budget thresholds.
 
-## ✨ Key Features
+30-Day Auto-Reset: Smart temporal logic that archives current data and resets the budget cycle every month.
 
-- **Guardian Mail Logic**  
-  Automated Flask-Mail alerts at **10%, 5%, and 0%** budget remaining.
+Loan Handshake: Automated email notifications sent to friends immediately when a loan is logged to ensure transparency.
 
-- **30-Day Auto-Reset**  
-  Smart temporal logic that archives and resets your budget every month.
+Receipt Vault: Secure Cloudinary integration for digital invoice storage and retrieval.
 
-- **Loan Handshake**  
-  Automated email notifications to friends when a loan is logged.
+Visual Intelligence: Dynamic Chart.js dashboard featuring interactive Day vs. Month comparison toggles.
 
-- **Receipt Vault**  
-  Secure Cloudinary integration for digital invoice storage.
+🛠️ Tech Stack
+Backend: Python (Flask)
 
-- **Visual Intelligence**  
-  Real-time Chart.js dashboard with **Day vs Month comparison toggles**.
+Database: MongoDB Atlas (NoSQL Cloud Hosting)
 
----
+Storage: Cloudinary (Media/Receipt Management)
 
-## 🛠️ Tech Stack
+Communication: Flask-Mail (SMTP Integration)
 
-- **Backend:** Python (Flask)  
-- **Database:** MongoDB Atlas (Cloud-hosted)  
-- **Storage:** Cloudinary (Images/Bills)  
-- **Communication:** Flask-Mail (SMTP)  
-- **Frontend:** HTML5, CSS3 (Glassmorphism), JavaScript (AJAX)
+Frontend: HTML5, CSS3 (Glassmorphism UI), JavaScript (AJAX for seamless updates)
 
----
-
-## 🚀 Quick Start
-
-### 1️⃣ Clone the Repository
-```bash
+🚀 Quick Start
+1. Clone the Repository
+Bash
 git clone https://github.com/commitverse2026/YourTreasurer.git
 cd YourTreasurer
-````
-
-### 2️⃣ Install Dependencies
-
-```bash
+2. Install Dependencies
+Bash
 pip install -r requirements.txt
-```
+3. Setup Environment Variables
+Create a .env file in the root directory and configure the following:
 
-### 3️⃣ Setup Environment Variables
+MONGO_URI: Your MongoDB Atlas connection string.
 
-Create a `.env` file and configure:
+MAIL_USERNAME & MAIL_PASSWORD: Your SMTP credentials.
 
-```
-MONGO_URI=your_mongodb_uri
-MAIL_PASSWORD=your_email_password
-CLOUDINARY_URL=your_cloudinary_url
-```
+CLOUDINARY_URL: Your Cloudinary API environment variable.
 
-### 4️⃣ Run the Application
-
-```bash
+4. Run the Application
+Bash
 python app.py
-```
+📊 Implementation Roadmap
+[x] Foundation: Budget Gateway & 30-Day Reset Logic
 
----
+[x] Automation: Tiered Mail Alerts & Receipt Vaulting
 
-## 📊 Implementation Roadmap
+[x] Intelligence: Aggregation API & Dynamic Data Toggles
 
-* [x] Foundation: Budget Gateway & 30-Day Reset
-* [x] Automation: Mail Tiers & Receipt Vaulting
-* [x] Intelligence: Aggregation API & Data Toggles
-* [x] Liabilities: EMI Manager & Debt Recovery Logic
-* [x] Polish: Real-time Progress Bar & Celebration Animations
+[x] Liabilities: EMI Manager & Peer Debt Recovery Logic
 
----
+[x] Polish: Real-time Progress Bars & UI Animations
 
-## 💡 Project Highlights
-
-* Combines **finance + automation + behavioral nudging**
-* Built with **real-world scalability tools**
-* Focused on **student financial discipline**
-* Implements **"Diplomatic Logic"** for smart notifications and actions
-
----
-
-## ❤️ Developed For
-
-**CommitVerse 2026**
-
----
-
-## 📌 Future Enhancements
-
-* AI-based spending prediction
-* Smart saving recommendations
-* UPI integration for real-time tracking
-* Multi-user shared expense management
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to fork the repo and submit a pull request.
-
----
-
----
-
-> *YourTreasurer – Because every student deserves a CFO.*
-
-```
-
----
-
-```
+Developed with ❤️ for CommitVerse 2026

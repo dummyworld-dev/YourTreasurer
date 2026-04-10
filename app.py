@@ -1,149 +1,189 @@
-from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, session, jsonify
 from flask_pymongo import PyMongo
-from flask_mail import Mail, Message
-from werkzeug.utils import secure_filename
-import os
-import uuid 
-import threading
-import time
-import cloudinary
-import cloudinary.uploader
 from datetime import datetime
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "campuscoin_tracker_2026"
+app.secret_key = "secret123"
 
-# --- CONFIGURATION ---
+# ✅ MongoDB Configuration
+# Note: Keep your URI secure. In a production app, use environment variables.
+app.config["MONGO_URI"] = "mongodb+srv://onkarghadage1107_db_user:cPfYrgcDoaCdkOlz@cluster0.gs7ggdy.mongodb.net/yourtreasurer"
 
-# 1. Cloudinary Setup (Participants will use this for receipt uploads)
-cloudinary.config( 
-    cloud_name = os.environ.get("CLOUDINARY_NAME", "your_cloud_name"), 
-    api_key = os.environ.get("CLOUDINARY_KEY", "your_api_key"), 
-    api_secret = os.environ.get("CLOUDINARY_SECRET", "your_api_secret") 
-)
-
-# 2. MongoDB & Mail Setup
-# TODO for Participants: Insert your free MongoDB Atlas URI here
-app.config["MONGO_URI"] = "mongodb+srv://priteepardeshi3011_db_user:o1UpyYozHv4zvlTn@cluster0.a5drjzn.mongodb.net/"
 mongo = PyMongo(app)
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get("MAIL_USER", 'your_email@gmail.com')
-app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASS", 'your_app_password') 
-mail = Mail(app)
+# Database Collections
+users = mongo.db.users
+expenses = mongo.db.expenses
+loans = mongo.db.loans
 
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 # 5MB limit for receipts
 
-# --- ASYNC BACKGROUND TASKS ---
+# ---------------- LOGIN / REGISTER ---------------- #
 
-def send_async_email(app, msg):
-    """Function to send email in a background thread to prevent UI freezing."""
-    with app.app_context():
-        try:
-            mail.send(msg)
-            print("Email sent successfully!")
-        except Exception as e:
-            print(f"Background Mail Error: {e}")
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        password = request.form.get('password')
+        limit = request.form.get('monthly_limit', 0)
 
-# --- GLOBAL CHECKS ---
+        user = users.find_one({"name": name})
 
-@app.before_request
-def check_budget_setup():
-    """
-    TODO Task 1: Check if the user has set up their initial monthly budget.
-    If they haven't (and they aren't on static/profile pages), redirect them to MyProfile.
-    """
-    pass 
+        # If user doesn't exist, create a new profile
+        if not user:
+            users.insert_one({
+                "name": name,
+                "password": password, # In a real app, use werkzeug.security to hash this!
+                "monthly_limit": int(limit),
+                "current_spend": 0
+            })
+            session['user'] = name
+            return redirect('/')
 
-# --- CORE NAVIGATION ROUTES ---
+        # Check existing user password
+        if user['password'] == password:
+            session['user'] = name
+            return redirect('/')
+        else:
+            return "Invalid Password" # Simple error handling
+
+    return render_template("profile.html")
+
+
+# ---------------- HOME / DASHBOARD ---------------- #
 
 @app.route('/')
 def home():
-    # TODO: Fetch today's expenses to show a quick summary on the home dashboard
-    return render_template('index.html')
+    if "user" not in session:
+        return redirect('/login')
+    return render_template("index.html", user=session.get("user"))
 
-@app.route('/my_profile')
-def my_profile():
-    # TODO: Fetch user's current budget threshold from MongoDB
-    return render_template('profile.html')
+
+# ---------------- API FOR PROGRESS ---------------- #
+
+@app.route('/api/progress')
+def progress():
+    if "user" not in session:
+        return jsonify({"progress": 0, "spent": 0, "limit": 0})
+
+    user = users.find_one({"name": session["user"]})
+    if not user:
+        return jsonify({"progress": 0})
+
+    spent = user.get("current_spend", 0)
+    limit = user.get("monthly_limit", 1) # Prevent division by zero
+
+    # Calculate percentage
+    percent = (spent / limit) * 100
+
+    return jsonify({
+        "progress": round(percent, 2),
+        "spent": spent,
+        "limit": limit
+    })
+
+
+# ---------------- EXPENSE PAGE ---------------- #
 
 @app.route('/my_expenses')
 def my_expenses():
-    # TODO: Fetch all expenses from MongoDB, sort by date, and pass to template
-    return render_template('expenses.html')
+    if "user" not in session:
+        return redirect('/login')
 
-@app.route('/analysis')
-def analysis():
-    return render_template('analysis.html')
+    # Get all expenses and loans for the logged-in user
+    exp_list = list(expenses.find({"user": session["user"]}).sort("date", -1))
+    loan_data = list(loans.find({"user": session["user"]}))
 
-@app.route('/interval_spend')
-def interval_spend():
-    # TODO: Fetch EMI and Subscription data to display upcoming dues
-    return render_template('interval_spend.html')
+    return render_template("expenses.html", expenses=exp_list, loans=loan_data)
 
-@app.route('/about_us')
-def about_us():
-    return render_template('about_us.html')
 
-# --- DATA SUBMISSION ROUTES (THE LOGIC) ---
+# ---------------- ADD EXPENSE ---------------- #
 
 @app.route('/add_expense', methods=['POST'])
 def add_expense():
-    """Handles adding a new daily expense."""
-    try:
-        form_data = request.form.to_dict()
-        
-        # 1. TODO: Handle Cloudinary receipt upload if 'receipt_image' exists in request.files
-        # 2. TODO: Insert form_data into MongoDB 'expenses' collection
-        # 3. TODO: Calculate if total month spend > 90% of threshold. If yes, trigger send_async_email()
+    if "user" not in session:
+        return redirect('/login')
 
-        return redirect(url_for('my_expenses'))
-    except Exception as e:
-        print(f"Expense Submit Error: {e}")
-        return f"Submission failed: {e}", 500
+    amount = int(request.form.get('amount', 0))
+    category = request.form.get('category', 'General')
 
-@app.route('/add_friend_loan', methods=['POST'])
-def add_friend_loan():
-    """Handles logging money given to a friend and sending initial email."""
-    try:
-        form_data = request.form.to_dict()
-        # TODO: Save loan to database
-        # TODO: Send async email to friend stating "You owe me money for..."
-        
-        return redirect(url_for('my_expenses'))
-    except Exception as e:
-        return "Internal Error", 500
+    # Record the expense
+    expenses.insert_one({
+        "user": session["user"],
+        "amount": amount,
+        "category": category,
+        "date": datetime.now()
+    })
 
-@app.route('/add_interval_spend', methods=['POST'])
-def add_interval_spend():
-    """Handles adding EMIs, Hostel Fees, Subscriptions."""
-    try:
-        form_data = request.form.to_dict()
-        # TODO: Save interval spend to MongoDB, calculate next due date
-        return redirect(url_for('interval_spend'))
-    except Exception as e:
-        return "Internal Error", 500
+    # Update the user's total current spend
+    users.update_one(
+        {"name": session["user"]},
+        {"$inc": {"current_spend": amount}}
+    )
 
-# --- API ROUTES (FOR REAL-TIME CHARTS) ---
+    return redirect('/my_expenses')
 
-@app.route('/api/spend_data')
-def spend_data():
-    """API endpoint to feed the Doughnut and Line charts in the Analysis tab."""
-    # TODO Task 4: Query MongoDB, group expenses by Category (Hostel, Junk Food, etc.)
-    # Return as JSON so JavaScript can draw the charts without reloading the page
+
+# ---------------- ADD LOAN ---------------- #
+
+@app.route('/add_loan', methods=['POST'])
+def add_loan():
+    if "user" not in session:
+        return redirect('/login')
+
+    loans.insert_one({
+        "user": session["user"],
+        "friend_name": request.form.get('friend_name'),
+        "amount": int(request.form.get('amount', 0)),
+        "status": "pending"
+    })
+    return redirect('/my_expenses')
+
+
+# ---------------- MARK RETURNED ---------------- #
+
+@app.route('/mark_returned/<loan_id>', methods=['POST'])
+def mark_returned(loan_id):
+    if "user" not in session:
+        return redirect('/login')
+
+    # Find the loan details before updating
+    loan = loans.find_one({"_id": ObjectId(loan_id)})
     
-    dummy_data = {
-        "categories": ["Educational", "Lifestyle", "Healthy Food", "Junk Food", "Hostel Rent", "Travelling"],
-        "amounts": [1200, 500, 800, 300, 5000, 450]
-    }
-    return jsonify(dummy_data)
+    if loan and loan['status'] == 'pending':
+        # Update loan status
+        loans.update_one(
+            {"_id": ObjectId(loan_id)},
+            {"$set": {"status": "returned"}}
+        )
+
+        amount = loan['amount']
+
+        # Recording a 'negative' expense because money came back to you
+        expenses.insert_one({
+            "user": session["user"],
+            "amount": -amount,
+            "category": f"Loan Return: {loan['friend_name']}",
+            "date": datetime.now()
+        })
+
+        # Decrease current spending since debt was repaid
+        users.update_one(
+            {"name": session["user"]},
+            {"$inc": {"current_spend": -amount}}
+        )
+
+    return redirect('/my_expenses')
 
 
-@app.errorhandler(413)
-def request_entity_too_large(error):
-    return "<h1>Receipt file is too large!</h1><p>Please keep your screenshot under 5MB.</p><a href='/my_expenses'>Try Again</a>", 413
+# ---------------- LOGOUT ---------------- #
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+
+if __name__ == "__main__":
+    # In production, set debug=False
+    app.run(debug=True)
